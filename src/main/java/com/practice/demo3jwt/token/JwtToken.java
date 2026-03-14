@@ -1,7 +1,9 @@
 package com.practice.demo3jwt.token;
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jws;
+import io.jsonwebtoken.JwtParserBuilder;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
@@ -32,7 +34,25 @@ public class JwtToken {
                 .subject(userDetails.getUsername())
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + JWT_VALIDITY))
-                .signWith(SignatureAlgorithm.HS256, SECRET_KEY)
+                .signWith(getKey(), Jwts.SIG.HS512)
                 .compact();
+    }
+    private SecretKey getKey() {
+        byte[] bytes = SECRET_KEY.getBytes();
+        SecretKey keys = Keys.hmacShaKeyFor(bytes);
+        return keys;
+    }
+
+    private Jws<Claims> getAllClaimsFromToken(String token) {
+        JwtParserBuilder parser = Jwts.parser();
+        Jws<Claims> claims = parser.verifyWith(getKey()).build().parseSignedClaims(token);
+        return claims;
+    }
+    public String getUsernameFromToken(String token) {
+        return getAllClaimsFromToken(token).getPayload().getSubject();
+    }
+    public boolean isTokenExpired(String token) {
+        Date expiration = getAllClaimsFromToken(token).getPayload().getExpiration();
+        return expiration.before(new Date());
     }
 }
